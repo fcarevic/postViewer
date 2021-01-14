@@ -3,11 +3,10 @@ package com.example.postviewer.ui_fragments;
 import androidx.lifecycle.ViewModel;
 
 import com.example.postviewer.entities.Post;
-import com.example.postviewer.parser.Parser;
 
 public class InterCommunicator extends ViewModel {
     private Post post;
-    private Parser parser;
+    private UI_Updater ui_updater;
 
     public void setPost(Post post) {
         this.post = post;
@@ -17,11 +16,11 @@ public class InterCommunicator extends ViewModel {
         return this.post;
     }
 
-    public void setParser(Parser parser) {
-        this.parser = parser;
+    public void setUi_Updater(UI_Updater ui_updater) {
+        this.ui_updater = ui_updater;
     }
 
-    public Parser getParser() {
-        return this.parser;
+    public UI_Updater getUI_Updater() {
+        return this.ui_updater;
     }
 }

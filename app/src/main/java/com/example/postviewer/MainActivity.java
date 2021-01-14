@@ -1,10 +1,14 @@
 package com.example.postviewer;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
 
-import com.example.postviewer.parser.Parser;
-import com.example.postviewer.parser.RestParser;
+import com.example.postviewer.service.RestService;
 import com.example.postviewer.ui_fragments.InterCommunicator;
+import com.example.postviewer.ui_fragments.UI_Updater;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -12,14 +16,31 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 
+import android.os.IBinder;
 import android.view.View;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
     public static MainActivity mainActivity;
-    private RestParser parser;
+    private UI_Updater updater;
+    private RestService.LocalBinder binder;
+
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MainActivity.this.binder= (RestService.LocalBinder) service;
+            updater.setBinder(binder);
+            updater.start();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+        binder=null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,22 +50,47 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         mainActivity = this;
         FloatingActionButton fab = findViewById(R.id.refresh);
-        this.parser = new RestParser("http://jsonplaceholder.typicode.com/posts", "http://jsonplaceholder.typicode.com/users/");
-        this.parser.setDaemon(true);
+        this.updater = new UI_Updater(this);
         InterCommunicator communicator = new ViewModelProvider(this).get(InterCommunicator.class);
-        communicator.setParser(this.parser);
-        this.parser.start();
+        communicator.setUi_Updater(this.updater);
+
 
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                MainActivity.this.parser.refreshState();
-                Snackbar.make(view, "Refreshing...", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if(binder==null)  return;
+                 binder.initiateRefresh();
+               Toast.makeText(MainActivity.this, "Refreshing...", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        startAndBindService();
+    }
+
+    private void startAndBindService() {
+        try {
+            Intent service = new Intent(this, RestService.class);
+            startService(service);
+            bindService(service, connection, Context.BIND_AUTO_CREATE );
+
+        }
+
+        catch (Exception e){
+            Toast.makeText(this, e.toString(),Toast.LENGTH_LONG).show();
+        }
+
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        unbindService(connection);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -55,13 +101,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        int id = item.getItemId();
+        if (id == R.id.stop_service) {
+            if(binder!=null) binder.stopService();
             return true;
         }
 
@@ -70,12 +113,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        this.parser.interrupt();
-        try {
-            this.parser.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        this.updater.interrupt();
         super.onDestroy();
     }
 }

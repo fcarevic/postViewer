@@ -14,8 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.postviewer.R;
 import com.example.postviewer.entities.Database;
 import com.example.postviewer.entities.Post;
-import com.example.postviewer.parser.Parser;
-import com.example.postviewer.parser.RestParser;
 
 import java.util.List;
 
@@ -107,9 +105,12 @@ public class RecycleViewFragment extends Fragment {
 
     private void initDataset() {
         InterCommunicator communicator = new ViewModelProvider(requireActivity()).get(InterCommunicator.class);
-        Parser parser = communicator.getParser();
-        parser.subscribe(this.mAdapter);
-        this.mAdapter.setLocalData(Database.getInstance(this.requireContext()).getDAO_Post().getAllPosts());
+        UI_Updater updater = communicator.getUI_Updater();
+        updater.subscribe(this.mAdapter);
+
+//       if(updater.getBinder()!=null)
+//        this.mAdapter.setLocalData(Database.getInstance(updater.getBinder().getService()).getDAO_Post().getAllPosts());
+        this.mAdapter.setLocalData(Database.getInstance(requireContext()).getDAO_Post().getAllPosts());
 
     }
 
